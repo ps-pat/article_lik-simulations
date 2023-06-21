@@ -68,6 +68,8 @@ With `n = 10` and `n_mcmc = 10`:
 function pure_coal2(rng, sample_prop, models, path = nothing;
                     N = 1_000_000, maf = 5e-2, μ = 1e-1,
                     M = 1000, n_is = 1000, n_mcmc = 1000)
+    rng_copy = deepcopy(rng)
+
     ## Generate population.
     pop_hap = pop_hap2(N, maf)
     pop_phenos = pop_pheno2(rng, pop_hap, models)
@@ -108,7 +110,8 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
 
     ret = (;res_pheno2 = res,
            prevalence_pheno2 = prevalences,
-           pop_pheno2 = pop_phenos)
+           pop_pheno2 = pop_phenos,
+           rng = rng_copy)
 
     if !isnothing(path)
         pairs = map((var, val) -> var => val, keys(ret), values(ret))

@@ -1,7 +1,7 @@
 name = "Simulations"
 uuid = "778192d3-ef18-4ce5-814b-6356444560f1"
 authors = ["Patrick Fournier <p_fournier@hushmail.com>"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
@@ -9,3 +9,6 @@ JLSO = "9da8a3cd-07a3-59c0-a743-3fdc52c30d11"
 Moosh = "99b31415-443e-43a2-8bf4-ca532bb4a161"
 RandomNumbers = "e6cf234a-135c-5ec9-84dd-332b85af5143"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+
+[compat]
+Moosh = "0.1.7"
