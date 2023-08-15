@@ -10,6 +10,8 @@ using JLSO
 
 using Base.Threads
 
+using DataFrames
+
 pop_hap2(N, maf) =
     vcat([Sequence([one(UInt)], 1) for _ ∈ 1:(N * maf)],
          [Sequence([zero(UInt)], 1) for _ ∈ 1:(N * (1 - maf))])
@@ -22,7 +24,7 @@ pop_hap2(N, maf) =
 - This function assumes that all the haplotypes with the derived
 allele are at the beginning of `haplotypes`.
 """
-function pop_pheno2(rng, haplotypes, penetrance::NTuple{2, Real})
+function pop_pheno2(rng, haplotypes, penetrance::Union{NamedTuple{S, T}, T}) where {S, T<:NTuple{2, Real}}
     N = length(haplotypes)
 
     ret = Vector{Union{Missing, Bool}}(undef, N)
@@ -50,7 +52,8 @@ function pop_pheno2(rng, haplotypes, models::Dict)
     for (model, penetrance) ∈ models
         φs = pop_pheno2(rng, haplotypes, penetrance)
         ret[model] = Dict{Symbol, Any}(:φs => φs,
-                                       :prevalence => mean(φs))
+                                       :prevalence => mean(φs),
+                                       :penetrance => penetrance)
     end
 
     ret
@@ -151,4 +154,32 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
     end
 
     ret
+end
+
+export todf
+function todf(results)
+    ## From simulations.
+    sims = DataFrame(Scenario = Symbol[],
+                     Status = Symbol[],
+                     prob = BigFloat[])
+
+    for sam ∈ results[:samples]
+        status = first(sam[:ηs][sam[:star]]) ? :derived : :wild
+
+        for scenario ∈ sam[:scenarios]
+            push!(sims, (scenario, status, last(sam[scenario][:lik])))
+        end
+    end
+
+    ## True values.
+    truth = empty(sims)
+
+    for (scenario, status) ∈ Iterators.product(results[:pop][:scenarios],
+                                               (:derived, :wild))
+        prob = results[:pop][scenario][:penetrance][status]
+
+        push!(truth, (scenario, status, prob))
+    end
+
+    Dict(:simulated => sims, :truth => truth)
 end
