@@ -148,10 +148,7 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
         end
     end
 
-    if !isnothing(path)
-        pairs = map((var, val) -> var => val, keys(ret), values(ret))
-        JLSO.save(path, pairs...)
-    end
+    isnothing(path) || JLSO.save(path, sims => ret)
 
     ret
 end
