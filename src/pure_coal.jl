@@ -107,7 +107,7 @@ export pure_coal2
 """
 function pure_coal2(rng, sample_prop, models, path = nothing;
                     N = 1_000_000, maf = 5e-2, μ = 1e-1,
-                    M = 1000, n_is = 1000)
+                    M = 1000, n_is = 1000, α = t -> 1 - exp(-t))
     ## Generate population.
     pop_hap = pop_hap2(N, maf)
     pop_phenos = pop_pheno2(rng, pop_hap, models)
@@ -138,7 +138,7 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
 
             fφs = FrechetCoalDensity(
                 sam[scenario][:φs],
-                α = t -> 1 - exp(-t / n),
+                α = α,
                 pars = Dict(:p => pop_phenos[scenario][:prevalence]))
 
             sam[scenario][:lik] =
