@@ -12,6 +12,8 @@ using Base.Threads
 
 using DataFrames
 
+using Random: Xoshiro
+
 pop_hap2(N, maf) =
     vcat([Sequence([one(UInt)], 1) for _ ∈ 1:(N * maf)],
          [Sequence([zero(UInt)], 1) for _ ∈ 1:(N * (1 - maf))])
@@ -180,4 +182,22 @@ function todf(results)
     end
 
     Dict(:simulated => sims, :truth => truth)
+end
+
+export study1
+
+"""
+    study1()
+
+Execute the first simulation study.
+"""
+function study1()
+    rng = Xoshiro(42)
+    sample_prop = 1e-3
+    scenarios = Dict(:full => (wild = 0.05, derived = 1.0),
+                     :high => (wild = 0.05, derived = 0.75),
+                     :low => (wild = 0.05, derived = 0.2))
+    path = "study1.JLSO"
+
+    pure_coal2(rng, sample_prop, scenarios, path)
 end

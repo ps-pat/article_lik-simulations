@@ -1,13 +1,14 @@
 name = "Simulations"
 uuid = "778192d3-ef18-4ce5-814b-6356444560f1"
 authors = ["Patrick Fournier <p_fournier@hushmail.com>"]
-version = "0.1.6"
+version = "0.1.7"
 
 [deps]
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 JLSO = "9da8a3cd-07a3-59c0-a743-3fdc52c30d11"
 Moosh = "99b31415-443e-43a2-8bf4-ca532bb4a161"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 RandomNumbers = "e6cf234a-135c-5ec9-84dd-332b85af5143"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
