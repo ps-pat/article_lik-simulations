@@ -148,7 +148,7 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
         end
     end
 
-    isnothing(path) || JLSO.save(path, sims => ret)
+    isnothing(path) || JLSO.save(path, :simulation => ret)
 
     ret
 end
