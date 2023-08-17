@@ -193,7 +193,7 @@ export study1
 
 Execute the first simulation study.
 """
-function study1()
+function study1(; kwargs...)
     rng = Xoshiro(42)
     sample_prop = 1e-3
     scenarios = Dict(:full => (wild = 0.05, derived = 1.0),
@@ -201,5 +201,5 @@ function study1()
                      :low => (wild = 0.05, derived = 0.2))
     path = "study1.JLSO"
 
-    pure_coal2(rng, sample_prop, scenarios, path)
+    pure_coal2(rng, sample_prop, scenarios, path; kwargs...)
 end
