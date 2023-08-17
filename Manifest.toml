@@ -2,7 +2,7 @@
 
 julia_version = "1.9.2"
 manifest_format = "2.0"
-project_hash = "ab2395792ffac959accae6b06892daa640a81ef3"
+project_hash = "6ae8d541455c42229c7ef9d2276106fd7b79d554"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -1208,6 +1208,12 @@ uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 [[deps.Profile]]
 deps = ["Printf"]
 uuid = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
+
+[[deps.ProgressBars]]
+deps = ["Printf"]
+git-tree-sha1 = "9d84c8646109eb8bc7a006d59b157c64d5155c81"
+uuid = "49802e3a-d2f1-5c88-81d8-b72133a6f568"
+version = "1.5.0"
 
 [[deps.ProgressMeter]]
 deps = ["Distributed", "Printf"]

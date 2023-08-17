@@ -14,6 +14,8 @@ using DataFrames
 
 using Random: Xoshiro
 
+using ProgressBars: ProgressBar
+
 pop_hap2(N, maf) =
     vcat([Sequence([one(UInt)], 1) for _ ∈ 1:(N * maf)],
          [Sequence([zero(UInt)], 1) for _ ∈ 1:(N * (1 - maf))])
@@ -122,7 +124,7 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
                :samples => Vector{Dict{Symbol, Any}}(undef, M))
 
     seed = rand(rng, Int)
-    @threads for k ∈ 1:M
+    @threads for k ∈ ProgressBar(1:M)
         rng_local = PCGStateSetseq((seed, k))
 
         sam = sample_pop(rng_local, n, pop_phenos)
