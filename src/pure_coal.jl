@@ -199,7 +199,7 @@ function study1(; kwargs...)
     scenarios = Dict(:full => (wild = 0.05, derived = 1.0),
                      :high => (wild = 0.05, derived = 0.75),
                      :low => (wild = 0.05, derived = 0.2))
-    path = "study1.JLSO"
+    path = "study1.jlso"
 
     pure_coal2(rng, sample_prop, scenarios, path; kwargs...)
 end
