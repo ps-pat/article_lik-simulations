@@ -1,20 +1,20 @@
-using Moosh
-
-using RandomNumbers.PCG: PCGStateSetseq
-
 using StatsBase: sample, mean
-
-using Distributions: Bernoulli
-
-using JLSO
-
-using Base.Threads
 
 using DataFrames
 
 using Random: Xoshiro
 
-using ProgressBars: ProgressBar
+using Distributed
+
+@everywhere begin
+    using Moosh
+
+    using ProgressMeter
+
+    using RandomNumbers.PCG: PCGStateSetseq
+
+    using JLSO
+end
 
 pop_hap2(N, maf) =
     vcat([Sequence([one(UInt)], 1) for _ ∈ 1:(N * maf)],
@@ -122,12 +122,9 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
 
     ## Simulation study.
     n = round(Int, sample_prop * N)
-
-    ret = Dict(:pop => pop_phenos,
-               :samples => Vector{Dict{Symbol, Any}}(undef, M))
-
     seed = rand(rng, Int)
-    @threads for k ∈ ProgressBar(1:M)
+
+    res = @showprogress pmap(1:M) do k
         rng_local = PCGStateSetseq((seed, k))
 
         sam = sample_pop(rng_local, n, pop_phenos)
@@ -151,12 +148,14 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
 
             sam[scenario][:lik] =
                 compute_likelihood(rng_local, fφs, sam[:ηs], n_is)
-
-            ret[:samples][k] = sam
         end
+
+        sam
     end
 
-    isnothing(path) || JLSO.save(path, :simulation => ret)
+    ret = Dict(:pop => pop_phenos, :samples => res)
+
+#    isnothing(path) || JLSO.save(path, :simulation => ret)
 
     ret
 end
