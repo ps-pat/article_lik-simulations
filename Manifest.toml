@@ -1,8 +1,8 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.9.2"
+julia_version = "1.9.3"
 manifest_format = "2.0"
-project_hash = "6ae8d541455c42229c7ef9d2276106fd7b79d554"
+project_hash = "071b5d3345330bfde47b6002e7729018b93d8279"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -1209,17 +1209,11 @@ uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 deps = ["Printf"]
 uuid = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
 
-[[deps.ProgressBars]]
-deps = ["Printf"]
-git-tree-sha1 = "9d84c8646109eb8bc7a006d59b157c64d5155c81"
-uuid = "49802e3a-d2f1-5c88-81d8-b72133a6f568"
-version = "1.5.0"
-
 [[deps.ProgressMeter]]
 deps = ["Distributed", "Printf"]
-git-tree-sha1 = "d7a7aef8f8f2d537104f170139553b14dfe39fe9"
+git-tree-sha1 = "ae36206463b2395804f2787ffe172f44452b538d"
 uuid = "92933f4c-e287-5a05-a399-4b506db050ca"
-version = "1.7.2"
+version = "1.8.0"
 
 [[deps.QOI]]
 deps = ["ColorTypes", "FileIO", "FixedPointNumbers"]
