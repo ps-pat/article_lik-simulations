@@ -64,17 +64,20 @@ function pop_pheno2(rng, haplotypes, models::Dict)
 end
 
 function sample_pop(rng, n, pop)
-    ret = deepcopy(pop)
+    ret = empty(pop)
+
+    ret[:N] = pop[:N]
+    ret[:scenarios] = pop[:scenarios]
     ret[:n] = n
 
-    ηs = ret[:ηs]
-    idx = sample(rng, eachindex(ηs), n, replace = false)
+    idx = sample(rng, 1:pop[:N], n, replace = false)
 
-    ret[:ηs] = getindex(ret[:ηs], idx)
+    ret[:ηs] = getindex(pop[:ηs], idx)
 
-    for scenario ∈ ret[:scenarios]
-        ret[scenario][:φs] = getindex(ret[scenario][:φs], idx)
-        delete!(ret[scenario], :prevalence)
+    for scenario ∈ pop[:scenarios]
+        ret[scenario] = Dict{Symbol, Any}()
+        ret[scenario][:φs] = getindex(pop[scenario][:φs], idx)
+        ret[scenario][:penetrance] = pop[scenario][:penetrance]
     end
 
     ret
