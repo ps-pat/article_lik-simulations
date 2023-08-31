@@ -135,6 +135,8 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
     batchsize = ceil(Int, M ÷ nworkers())
 
     res = @showprogress pmap(1:M, batch_size = batchsize) do k
+        GC.gc()
+
         rng_local = PCGStateSetseq((seed, k))
 
         sam = sample_pop(rng_local, n, pop_phenos)
@@ -165,7 +167,7 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
 
     ret = Dict(:pop => pop_phenos, :samples => res)
 
-#    isnothing(path) || JLSO.save(path, :simulation => ret)
+    isnothing(path) || JLSO.save(path, :simulation => ret)
 
     ret
 end
