@@ -132,7 +132,9 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
     n = round(Int, sample_prop * N)
     seed = rand(rng, Int)
 
-    res = @showprogress pmap(1:M) do k
+    batchsize = ceil(Int, M ÷ nworkers())
+
+    res = @showprogress pmap(1:M, batch_size = batchsize) do k
         rng_local = PCGStateSetseq((seed, k))
 
         sam = sample_pop(rng_local, n, pop_phenos)
