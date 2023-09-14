@@ -1,8 +1,8 @@
-using StatsBase: sample, mean
+using StatsBase: sample, mean, var
 
 using DataFrames
 
-using Random: Xoshiro
+using Random: Xoshiro, shuffle!
 
 using Distributed
 
@@ -13,6 +13,8 @@ using ProgressMeter
 using RandomNumbers.PCG: PCGStateSetseq
 
 using JLSO
+
+using SpecialFunctions: gamma
 
 @everywhere begin
     using Moosh
@@ -91,7 +93,7 @@ function sample_pop(rng, n, pop)
     ret
 end
 
-function compute_likelihood(rng, fφs, ηs, nb_is;
+function compute_likelihood(rng, fφs, ηs, nb_is, nperms;
                             seq_length = 1,
                             Ne = 1000,
                             μ_loc = 5e-5)
@@ -107,10 +109,30 @@ function compute_likelihood(rng, fφs, ηs, nb_is;
             positions = [0])
         buildtree!(rng, arg)
 
+        ## Probability of the tree.
         ftree = CoalMutDensity(n, mut_rate(arg), seq_length)
+        log_weight = ftree(arg, logscale = true) .- arg.logprob
 
-        res .+= exp.(log.(fφs(arg))
-                     .+ ftree(arg, logscale = true) .- arg.logprob)
+        qleaves = quotient_leaves(arg)
+        perm_ref = vcat(qleaves...)
+        perm = similar(perm_ref)
+
+        nperms = min(nperms,
+                     mapreduce((x -> gamma(1 + x)) ∘ length, *,
+                                qleaves))
+        for _ ∈ 1:nperms
+            ## Shuffle each equivalence class
+            for k ∈ eachindex(qleaves)
+                @inbounds shuffle!(rng, qleaves[k])
+            end
+
+            ## Reconstruct permutation
+            for (x, idx) ∈ zip(Iterators.flatten(qleaves), perm_ref)
+                perm[idx] = x
+            end
+
+            res .+= exp.(log.(fφs(arg, perm)) .+ log_weight)
+        end
     end
 
     res ./ sum(res)
@@ -123,7 +145,7 @@ export pure_coal2
 function pure_coal2(rng, sample_prop, models, path = nothing;
                     N = 1_000_000, maf = 5e-2, μ = 1e-1,
                     α = (t, λ) -> 1 - exp(-t / λ),
-                    M = 1000, n_is = 1000)
+                    M = 1000, n_is = 1000, nperms_max = 1000)
     ## Generate population.
     pop_hap = pop_hap2(N, maf)
     pop_phenos = pop_pheno2(rng, pop_hap, models)
@@ -153,13 +175,18 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
         for scenario ∈ sam[:scenarios]
             sam[scenario][:φs][istar] = missing
 
+            ## Compute the number of phenotype permutations to use.
+            var_φs = var(skipmissing(sam[scenario][:φs]))
+            nperms = ceil(Int, 2 * var_φs * nperms_max)
+
             fφs = FrechetCoalDensity(
                 sam[scenario][:φs],
                 α = α,
                 pars = Dict(:p => pop_phenos[scenario][:prevalence]))
 
             sam[scenario][:lik] =
-                compute_likelihood(rng_local, fφs, sam[:ηs], n_is)
+                compute_likelihood(rng_local, fφs, sam[:ηs],
+                                   n_is, nperms)
         end
 
         sam
