@@ -122,9 +122,7 @@ function compute_likelihood(rng, fφs, ηs, nb_is, nperms;
                                 qleaves))
         for _ ∈ 1:nperms
             ## Shuffle each equivalence class
-            for k ∈ eachindex(qleaves)
-                @inbounds shuffle!(rng, qleaves[k])
-            end
+            weird_shuffle!(rng, arg, qleaves)
 
             ## Reconstruct permutation
             for (x, idx) ∈ zip(Iterators.flatten(qleaves), perm_ref)
@@ -145,7 +143,7 @@ export pure_coal2
 function pure_coal2(rng, sample_prop, models, path = nothing;
                     N = 1_000_000, maf = 5e-2, μ = 1e-1,
                     α = (t, λ) -> 1 - exp(-t / λ),
-                    M = 1000, n_is = 1000, nperms_max = 1000)
+                    M = 1000, n_is = 1000, nperms = 1000)
     ## Generate population.
     pop_hap = pop_hap2(N, maf)
     pop_phenos = pop_pheno2(rng, pop_hap, models)
@@ -174,10 +172,6 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
 
         for scenario ∈ sam[:scenarios]
             sam[scenario][:φs][istar] = missing
-
-            ## Compute the number of phenotype permutations to use.
-            var_φs = var(skipmissing(sam[scenario][:φs]))
-            nperms = ceil(Int, 2 * var_φs * nperms_max)
 
             fφs = FrechetCoalDensity(
                 sam[scenario][:φs],
@@ -236,7 +230,7 @@ Execute the first simulation study.
 """
 function study1(; kwargs...)
     rng = Xoshiro(42)
-    sample_prop = 1e-3
+    sample_prop = 1e-4
     scenarios = Dict(:full => (wild = 0.05, derived = 1.0),
                      :high => (wild = 0.05, derived = 0.75),
                      :low => (wild = 0.05, derived = 0.2))

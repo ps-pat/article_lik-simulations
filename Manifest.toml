@@ -727,10 +727,10 @@ uuid = "aacddb02-875f-59d6-b918-886e6ef4fbf8"
 version = "2.1.91+0"
 
 [[deps.JuMP]]
-deps = ["LinearAlgebra", "MathOptInterface", "MutableArithmetics", "OrderedCollections", "Printf", "SnoopPrecompile", "SparseArrays"]
-git-tree-sha1 = "4db659ae33c7d26f957f302c0561ad135b7249ee"
+deps = ["LinearAlgebra", "MacroTools", "MathOptInterface", "MutableArithmetics", "OrderedCollections", "Printf", "SnoopPrecompile", "SparseArrays"]
+git-tree-sha1 = "9c79962793f1d584e24f8b8b8c8ad6aa7f3bdeaa"
 uuid = "4076af6c-e467-56ae-b986-b466b2749572"
-version = "1.14.1"
+version = "1.15.0"
 
     [deps.JuMP.extensions]
     JuMPDimensionalDataExt = "DimensionalData"
@@ -958,9 +958,9 @@ version = "1.3.3"
 
 [[deps.Moosh]]
 deps = ["Chain", "Distributions", "GeometryBasics", "GraphMakie", "Graphs", "IntervalSets", "LayeredLayouts", "PrecompileTools", "Random", "RandomNumbers", "StaticArrays", "Statistics"]
-git-tree-sha1 = "3f26e3b184de5fbc2470d455050e9a30eeaefc27"
+git-tree-sha1 = "2d06249f411c4b0a6502a83c16f8cbe8cdb1751a"
 uuid = "99b31415-443e-43a2-8bf4-ca532bb4a161"
-version = "0.1.19"
+version = "0.1.20"
 
 [[deps.MosaicViews]]
 deps = ["MappedArrays", "OffsetArrays", "PaddedViews", "StackViews"]
@@ -1161,9 +1161,9 @@ version = "1.0.0"
 
 [[deps.Polynomials]]
 deps = ["LinearAlgebra", "RecipesBase", "Setfield", "SparseArrays"]
-git-tree-sha1 = "b5d848e70cdf62f6896d29494c2a69ce4610ea8d"
+git-tree-sha1 = "ea78a2764f31715093de7ab495e12c0187f231d1"
 uuid = "f27b6e38-b328-58d1-80ce-0feddd5e7a45"
-version = "4.0.3"
+version = "4.0.4"
 weakdeps = ["ChainRulesCore", "FFTW", "MakieCore", "MutableArithmetics"]
 
     [deps.Polynomials.extensions]
@@ -1555,9 +1555,9 @@ uuid = "981d1d27-644d-49a2-9326-4793e63143c3"
 version = "0.1.0"
 
 [[deps.TupleTools]]
-git-tree-sha1 = "dd0ee1e392438338abb678dacdcaef41724ec57a"
+git-tree-sha1 = "155515ed4c4236db30049ac1495e2969cc06be9d"
 uuid = "9d95972d-f1c8-5527-a6e0-b4b365fa01f6"
-version = "1.4.0"
+version = "1.4.3"
 
 [[deps.UUIDs]]
 deps = ["Random", "SHA"]
