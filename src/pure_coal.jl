@@ -8,8 +8,6 @@ using Distributed
 
 using Moosh
 
-using ProgressMeter
-
 using RandomNumbers.PCG: PCGStateSetseq
 
 using JLSO
@@ -18,8 +16,6 @@ using SpecialFunctions: gamma
 
 @everywhere begin
     using Moosh
-
-    using ProgressMeter
 
     using RandomNumbers.PCG: PCGStateSetseq
 
@@ -154,7 +150,7 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
 
     batchsize = ceil(Int, M ÷ nworkers())
 
-    res = @showprogress pmap(1:M, batch_size = batchsize) do k
+    res = pmap(1:M, batch_size = batchsize) do k
         GC.gc()
 
         rng_local = PCGStateSetseq((seed, k))
