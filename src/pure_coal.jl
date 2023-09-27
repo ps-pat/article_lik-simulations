@@ -159,6 +159,7 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
     res_local = Vector{Dict{Symbol, Any}}(undef, batchsize)
     for (idx, k) in enumerate(range(batchsize * rank + 1, length = batchsize))
         println("Simulation $k")
+        GC.gc()
 
         rng_local = PCGStateSetseq((seed, k))
 
