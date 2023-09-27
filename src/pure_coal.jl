@@ -4,23 +4,15 @@ using DataFrames
 
 using Random: Xoshiro, shuffle!
 
-using Distributed
-
 using Moosh
 
 using RandomNumbers.PCG: PCGStateSetseq
 
-using JLSO
+using JLD2: jldsave
 
 using SpecialFunctions: gamma
 
-@everywhere begin
-    using Moosh
-
-    using RandomNumbers.PCG: PCGStateSetseq
-
-    using JLSO
-end
+import MPI
 
 pop_hap2(N, maf) =
     vcat([Sequence([one(UInt)], 1) for _ ∈ 1:(N * maf)],
@@ -140,18 +132,33 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
                     N = 1_000_000, maf = 5e-2, μ = 1e-1,
                     α = (t, λ) -> 1 - exp(-t / λ),
                     M = 1000, n_is = 1000, nperms = 1000)
-    ## Generate population.
-    pop_hap = pop_hap2(N, maf)
-    pop_phenos = pop_pheno2(rng, pop_hap, models)
+    ## MPI setup.
+    MPI.Init()
+    comm = MPI.COMM_WORLD
+    worldsize = MPI.Comm_size(comm)
 
-    ## Simulation study.
-    n = round(Int, sample_prop * N)
-    seed = rand(rng, Int)
+    if iszero(MPI.Comm_rank(comm)) # Root only
+        seed = rand(rng, Int)
+        batchsize = ceil(Int, M ÷ worldsize)
+        n = round(Int, sample_prop * N)
+        pop_phenos = pop_pheno2(rng, pop_hap2(N, maf), models)
+    else # Other workers
+        seed = zero(Int)
+        batchsize = zero(Int)
+        n = zero(Int)
+        pop_phenos = Dict{Symbol, Any}()
+    end
 
-    batchsize = ceil(Int, M ÷ nworkers())
+    ## Actual work executed by every workers.
+    seed = MPI.bcast(seed, comm)
+    batchsize = MPI.bcast(batchsize, comm)
+    n = MPI.bcast(n, comm)
+    pop_phenos = MPI.bcast(pop_phenos, comm)
+    rank = MPI.Comm_rank(comm)
 
-    res = pmap(1:M, batch_size = batchsize) do k
-        GC.gc()
+    res_local = Vector{Dict{Symbol, Any}}(undef, batchsize)
+    for (idx, k) in enumerate(range(batchsize * rank + 1, length = batchsize))
+        println("Simulation $k")
 
         rng_local = PCGStateSetseq((seed, k))
 
@@ -179,14 +186,15 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
                                    n_is, nperms)
         end
 
-        sam
+        res_local[idx] = sam
     end
 
-    ret = Dict(:pop => pop_phenos, :samples => res)
+    ## Put it all together & save results.
+    res = MPI.gather(res_local, comm)
+    iszero(MPI.Comm_rank(comm)) &&
+        (isnothing(path) || jldsave(path, simulation = vcat(res...)))
 
-    isnothing(path) || JLSO.save(path, :simulation => ret)
-
-    ret
+    nothing
 end
 
 export todf
@@ -224,13 +232,12 @@ export study1
 
 Execute the first simulation study.
 """
-function study1(; kwargs...)
+function study1(path = "study1.data"; kwargs...)
     rng = Xoshiro(42)
     sample_prop = 1e-4
     scenarios = Dict(:full => (wild = 0.05, derived = 1.0),
                      :high => (wild = 0.05, derived = 0.75),
                      :low => (wild = 0.05, derived = 0.2))
-    path = "study1.jlso"
 
     pure_coal2(rng, sample_prop, scenarios, path; kwargs...)
 end
