@@ -163,10 +163,14 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
 
         rng_local = PCGStateSetseq((seed, k))
 
-        sam = sample_pop(rng_local, n, pop_phenos)
+        sam = Dict{Symbol, Any}()
+        derived_idx = Int[]
+        while isempty(derived_idx)
+            sam = sample_pop(rng_local, n, pop_phenos)
+            derived_idx = findall(seq -> first(seq), sam[:ηs])
+        end
 
         ## Remove the phenotype of a random individual.
-        derived_idx = findall(seq -> first(seq), sam[:ηs])
         possible_stars = isodd(k) ?
             derived_idx : setdiff(1:n, derived_idx)
 
