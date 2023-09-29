@@ -197,7 +197,9 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
     ## Put it all together & save results.
     res = MPI.gather(res_local, comm)
     iszero(MPI.Comm_rank(comm)) &&
-        (isnothing(path) || jldsave(path, simulation = vcat(res...)))
+        (isnothing(path) || jldsave(path, simulation = Dict(
+            :samples => vcat(res...),
+            :pop => pop_phenos)))
 
     nothing
 end
