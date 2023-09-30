@@ -979,9 +979,9 @@ version = "1.3.3"
 
 [[deps.Moosh]]
 deps = ["Chain", "Distributions", "GeometryBasics", "GraphMakie", "Graphs", "IntervalSets", "LayeredLayouts", "PrecompileTools", "Random", "RandomNumbers", "StaticArrays", "Statistics"]
-git-tree-sha1 = "7d479c19a1fe83bb37c415c85f1ecb535a394367"
+git-tree-sha1 = "8fb6e3ef6cf1fa86e8cd71734482b68aedae1fa1"
 uuid = "99b31415-443e-43a2-8bf4-ca532bb4a161"
-version = "0.1.22"
+version = "0.1.23"
 
 [[deps.MosaicViews]]
 deps = ["MappedArrays", "OffsetArrays", "PaddedViews", "StackViews"]
@@ -1612,9 +1612,9 @@ version = "0.5.5"
 
 [[deps.XML2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libiconv_jll", "Zlib_jll"]
-git-tree-sha1 = "04a51d15436a572301b5abbb9d099713327e9fc4"
+git-tree-sha1 = "24b81b59bd35b3c42ab84fa589086e19be919916"
 uuid = "02c8fc9c-b97f-50b9-bbe4-9be30ff0a78a"
-version = "2.10.4+0"
+version = "2.11.5+0"
 
 [[deps.XSLT_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libgcrypt_jll", "Libgpg_error_jll", "Libiconv_jll", "Pkg", "XML2_jll", "Zlib_jll"]

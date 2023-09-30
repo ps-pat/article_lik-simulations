@@ -130,7 +130,7 @@ export pure_coal2
 """
 function pure_coal2(rng, sample_prop, models, path = nothing;
                     N = 1_000_000, maf = 5e-2, μ = 1e-1,
-                    α = t -> 1 - exp(-t / sqrt(sample_prop * N)),
+                    α = (t, p) -> -expm1(-1 / (1 + 1 / (2 * t^2 * p * (1 - p)))),
                     M = 1000, n_is = 1000, nperms = 1000)
     ## MPI setup.
     MPI.Init()
