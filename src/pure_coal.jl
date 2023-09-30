@@ -201,6 +201,7 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
             :samples => vcat(res...),
             :pop => pop_phenos)))
 
+    MPI.Finalize()
     nothing
 end
 
