@@ -192,12 +192,10 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
         end
 
         res_local[idx] = sam
-        println("Simulation $k completed")
     end
 
     ## Put it all together & save results.
     res = MPI.gather(res_local, comm)
-    MPI.Barrier(comm)
     iszero(MPI.Comm_rank(comm)) &&
         (isnothing(path) || jldsave(path, simulation = Dict(
             :samples => vcat(res...),
