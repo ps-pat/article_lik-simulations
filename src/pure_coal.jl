@@ -61,26 +61,6 @@ function pop_pheno2(rng, haplotypes, models::Dict)
     ret
 end
 
-function sample_pop(rng, n, pop)
-    ret = empty(pop)
-
-    ret[:N] = pop[:N]
-    ret[:scenarios] = pop[:scenarios]
-    ret[:n] = n
-
-    idx = sample(rng, 1:pop[:N], n, replace = false)
-
-    ret[:ηs] = getindex(pop[:ηs], idx)
-
-    for scenario ∈ pop[:scenarios]
-        ret[scenario] = Dict{Symbol, Any}()
-        ret[scenario][:φs] = getindex(pop[scenario][:φs], idx)
-        ret[scenario][:penetrance] = pop[scenario][:penetrance]
-    end
-
-    ret
-end
-
 function compute_likelihood(rng, fφs, ηs, nb_is, nperms;
                             seq_length = 1,
                             Ne = 1000,
@@ -130,43 +110,33 @@ export pure_coal2
 """
 function pure_coal2(rng, sample_prop, models, path = nothing;
                     N = 1_000_000, maf = 5e-2, μ = 1e-1,
-                    α = (t, p) -> -expm1(-1 / (1 + 1 / (2 * t^2 * p * (1 - p)))),
+                    α = t -> -expm1(-t),
                     M = 1000, n_is = 1000, nperms = 1000)
     ## MPI setup.
     MPI.Init()
     comm = MPI.COMM_WORLD
-    worldsize = MPI.Comm_size(comm)
 
-    if iszero(MPI.Comm_rank(comm)) # Root only
-        seed = rand(rng, Int)
-        batchsize = ceil(Int, M ÷ worldsize)
-        n = round(Int, sample_prop * N)
-        pop_phenos = pop_pheno2(rng, pop_hap2(N, maf), models)
-    else # Other workers
-        seed = zero(Int)
-        batchsize = zero(Int)
-        n = zero(Int)
-        pop_phenos = Dict{Symbol, Any}()
-    end
-
-    ## Actual work executed by every workers.
-    seed = MPI.bcast(seed, comm)
-    batchsize = MPI.bcast(batchsize, comm)
-    n = MPI.bcast(n, comm)
-    pop_phenos = MPI.bcast(pop_phenos, comm)
+    seed = rand(rng, Int)
+    batchsize = ceil(Int, M ÷ MPI.Comm_size(comm))
+    n = round(Int, sample_prop * N)
+    pop_phenos = pop_pheno2(rng, pop_hap2(N, maf), models)
     rank = MPI.Comm_rank(comm)
 
-    res_local = Vector{Dict{Symbol, Any}}(undef, batchsize)
+    istars_local = Vector{Int}(undef, batchsize)
+    idx_local = Matrix{Int}(undef, n, batchsize)
+    liks_local = Matrix{Float64}(undef, length(pop_phenos[:scenarios]), batchsize)
     for (idx, k) in enumerate(range(batchsize * rank + 1, length = batchsize))
         println("Simulation $k")
 
         rng_local = PCGStateSetseq((seed, k))
 
-        sam = Dict{Symbol, Any}()
-        derived_idx = Int[]
+        sam_idx = sample(rng_local, 1:N, n, replace = false)
+        sam_ηs = getindex(pop_phenos[:ηs], sam_idx)
+        derived_idx = findall(seq -> first(seq), sam_ηs)
         while isempty(derived_idx)
-            sam = sample_pop(rng_local, n, pop_phenos)
-            derived_idx = findall(seq -> first(seq), sam[:ηs])
+            sam_idx = sample(rng_local, 1:N, n, replace = false)
+            sam_ηs = getindex(pop_phenos[:ηs], sam_idx)
+            derived_idx = findall(seq -> first(seq), sam_ηs)
         end
 
         ## Remove the phenotype of a random individual.
@@ -174,35 +144,70 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
             derived_idx : setdiff(1:n, derived_idx)
 
         istar = (first ∘ sample)(rng_local, possible_stars, 1)
-        ηstar = sam[:ηs][istar]
-        sam[:star] = istar
 
-        for scenario ∈ sam[:scenarios]
-            sam[scenario][:φs][istar] = missing
+        for (i, scenario) ∈ enumerate(pop_phenos[:scenarios])
+            sam_φs = getindex(pop_phenos[scenario][:φs], sam_idx)
+            sam_φs[istar] = missing
+            p = pop_phenos[scenario][:prevalence]
 
-            fφs = FrechetCoalDensity(
-                sam[scenario][:φs],
-                α = α,
-                pars = Dict(:p => pop_phenos[scenario][:prevalence]))
+            fφs = FrechetCoalDensity(sam_φs, pars = Dict(:p => p))
 
-            sam[scenario][:lik] =
-                compute_likelihood(rng_local, fφs, sam[:ηs],
-                                   n_is, nperms)
+            liks_local[i, idx] =
+                last(compute_likelihood(rng_local, fφs, sam_ηs, n_is, nperms))
         end
 
-        res_local[idx] = sam
+        istars_local[idx] = istar
+        idx_local[:, idx] .= sam_idx
         GC.gc()
+        println("Simulation $k completed")
     end
 
     ## Put it all together & save results.
-    res = MPI.gather(res_local, comm)
-    iszero(MPI.Comm_rank(comm)) &&
-        (isnothing(path) || jldsave(path, simulation = Dict(
+    if iszero(MPI.Comm_rank(comm))
+        istars = similar(istars_local, eltype(istars_local), M * batchsize)
+        istars_buff = MPI.UBuffer(istars, batchsize)
+
+        idx = similar(idx_local, n, M * batchsize)
+        idx_buff = MPI.UBuffer(idx, (first ∘ size)(idx) * batchsize)
+
+        liks = similar(liks_local, length(pop_phenos[:scenarios]), M * batchsize)
+        liks_buff = MPI.UBuffer(liks, (first ∘ size)(liks) * batchsize)
+    else
+        istars_buff = MPI.UBuffer(nothing)
+        idx_buff = MPI.UBuffer(nothing)
+        liks_buff = MPI.UBuffer(nothing)
+    end
+
+    MPI.Gather!(istars_local, istars_buff, comm)
+    MPI.Gather!(idx_local, idx_buff, comm)
+    MPI.Gather!(liks_local, liks_buff, comm)
+
+    if iszero(MPI.Comm_rank(comm)) && !isnothing(path)
+        ## Fill `res`.
+        res = [Dict{Symbol, Any}() for _ ∈ range(1, length = M * batchsize)]
+        for k ∈ eachindex(res)
+            res[k][:N] = N
+            res[k][:n] = n
+            res[k][:scenarios] = pop_phenos[:scenarios]
+            res[k][:star] = istars[k]
+            res[k][:ηs] = pop_phenos[:ηs][idx[:,k]]
+
+            for (i, scenario) ∈ enumerate(res[k][:scenarios])
+                res[k][scenario] = Dict{Symbol, Any}()
+                res[k][scenario][:penetrance] =
+                    pop_phenos[scenario][:penetrance]
+                res[k][scenario][:φs] =
+                    getindex(pop_phenos[scenario][:φs], idx[:,k])
+                res[k][scenario][:prob_φ] = liks[i, k]
+            end
+        end
+
+        jldsave(path, simulation = Dict(
             :samples => vcat(res...),
-            :pop => pop_phenos)))
+            :pop => pop_phenos))
+    end
 
     MPI.Finalize()
-    nothing
 end
 
 export todf
@@ -216,7 +221,7 @@ function todf(results)
         status = first(sam[:ηs][sam[:star]]) ? :derived : :wild
 
         for scenario ∈ sam[:scenarios]
-            push!(sims, (scenario, status, last(sam[scenario][:lik])))
+            push!(sims, (scenario, status, sam[scenario][:prob_φ]))
         end
     end
 
