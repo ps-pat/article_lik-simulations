@@ -115,6 +115,7 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
     ## MPI setup.
     MPI.Init()
     comm = MPI.COMM_WORLD
+    worldsize = MPI.Comm_size(comm)
 
     seed = rand(rng, Int)
     batchsize = ceil(Int, M ÷ MPI.Comm_size(comm))
@@ -125,8 +126,9 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
     istars_local = Vector{Int}(undef, batchsize)
     idx_local = Matrix{Int}(undef, n, batchsize)
     liks_local = Matrix{Float64}(undef, length(pop_phenos[:scenarios]), batchsize)
-    for (idx, k) in enumerate(range(batchsize * rank + 1, length = batchsize))
-        println("Simulation $k")
+    iterations = range(batchsize * rank + 1, length = batchsize)
+    for (idx, k) in enumerate(iterations)
+        @info "Simulation" k
 
         rng_local = PCGStateSetseq((seed, k))
 
@@ -158,50 +160,56 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
 
         istars_local[idx] = istar
         idx_local[:, idx] .= sam_idx
-        GC.gc()
-        println("Simulation $k completed")
+
+        @info "Simulation completed" k
     end
 
+    @info "Iterations finished" iterations
+
     ## Put it all together & save results.
-    if iszero(MPI.Comm_rank(comm))
-        istars = similar(istars_local, eltype(istars_local), M * batchsize)
+    if iszero(rank)
+        istars = similar(istars_local, worldsize * batchsize)
         istars_buff = MPI.UBuffer(istars, batchsize)
 
-        idx = similar(idx_local, n, M * batchsize)
-        idx_buff = MPI.UBuffer(idx, (first ∘ size)(idx) * batchsize)
+        sampled_idx = similar(idx_local, n, worldsize * batchsize)
+        sampled_idx_buff =
+            MPI.UBuffer(sampled_idx, (first ∘ size)(sampled_idx) * batchsize)
 
-        liks = similar(liks_local, length(pop_phenos[:scenarios]), M * batchsize)
+        liks = similar(liks_local, length(pop_phenos[:scenarios]), worldsize * batchsize)
+        fill!(liks, 42)
         liks_buff = MPI.UBuffer(liks, (first ∘ size)(liks) * batchsize)
     else
         istars_buff = MPI.UBuffer(nothing)
-        idx_buff = MPI.UBuffer(nothing)
+        sampled_idx_buff = MPI.UBuffer(nothing)
         liks_buff = MPI.UBuffer(nothing)
     end
 
+    MPI.Gather!(idx_local, sampled_idx_buff, comm)
     MPI.Gather!(istars_local, istars_buff, comm)
-    MPI.Gather!(idx_local, idx_buff, comm)
     MPI.Gather!(liks_local, liks_buff, comm)
 
-    if iszero(MPI.Comm_rank(comm)) && !isnothing(path)
+    if iszero(rank) && !isnothing(path)
         ## Fill `res`.
-        res = [Dict{Symbol, Any}() for _ ∈ range(1, length = M * batchsize)]
+        @info "Compiling Results..."
+        res = [Dict{Symbol, Any}() for _ ∈ range(1, length = worldsize * batchsize)]
         for k ∈ eachindex(res)
             res[k][:N] = N
             res[k][:n] = n
             res[k][:scenarios] = pop_phenos[:scenarios]
             res[k][:star] = istars[k]
-            res[k][:ηs] = pop_phenos[:ηs][idx[:,k]]
+            res[k][:ηs] = getindex(pop_phenos[:ηs], sampled_idx[:,k])
 
             for (i, scenario) ∈ enumerate(res[k][:scenarios])
                 res[k][scenario] = Dict{Symbol, Any}()
                 res[k][scenario][:penetrance] =
                     pop_phenos[scenario][:penetrance]
                 res[k][scenario][:φs] =
-                    getindex(pop_phenos[scenario][:φs], idx[:,k])
+                    getindex(pop_phenos[scenario][:φs], sampled_idx[:,k])
                 res[k][scenario][:prob_φ] = liks[i, k]
             end
         end
 
+        @info "Writing results..."
         jldsave(path, simulation = Dict(
             :samples => vcat(res...),
             :pop => pop_phenos))
