@@ -254,9 +254,8 @@ export study1
 
 Execute the first simulation study.
 """
-function study1(path = "study1.data"; kwargs...)
+function study1(path = "study1.data"; sample_prop = 1e-4, kwargs...)
     rng = Xoshiro(42)
-    sample_prop = 1e-4
     scenarios = Dict(:full => (wild = 0.05, derived = 1.0),
                      :high => (wild = 0.05, derived = 0.75),
                      :low => (wild = 0.05, derived = 0.2))
