@@ -129,6 +129,7 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
     iterations = range(batchsize * rank + 1, length = batchsize)
     for (idx, k) in enumerate(iterations)
         @info "Simulation" k
+        GC.gc()
 
         rng_local = PCGStateSetseq((seed, k))
 
