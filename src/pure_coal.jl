@@ -61,7 +61,7 @@ function pop_pheno2(rng, haplotypes, models::Dict)
     ret
 end
 
-function compute_likelihood(rng, fφs, ηs, nb_is, nperms;
+function compute_likelihood(rng, fφs, ηs, nb_is;
                             seq_length = 1,
                             Ne = 1000,
                             μ_loc = 5e-5)
@@ -81,24 +81,7 @@ function compute_likelihood(rng, fφs, ηs, nb_is, nperms;
         ftree = CoalMutDensity(n, mut_rate(arg), seq_length)
         log_weight = ftree(arg, logscale = true) .- arg.logprob
 
-        qleaves = quotient_leaves(arg)
-        perm_ref = vcat(qleaves...)
-        perm = similar(perm_ref)
-
-        nperms = min(nperms,
-                     mapreduce((x -> gamma(1 + x)) ∘ length, *,
-                                qleaves))
-        for _ ∈ 1:nperms
-            ## Shuffle each equivalence class
-            weird_shuffle!(rng, arg, qleaves)
-
-            ## Reconstruct permutation
-            for (x, idx) ∈ zip(Iterators.flatten(qleaves), perm_ref)
-                perm[idx] = x
-            end
-
-            res .+= exp.(log.(fφs(arg, perm)) .+ log_weight)
-        end
+        res .+= exp.(log.(fφs(arg)) .+ log_weight)
     end
 
     res ./ sum(res)
@@ -111,7 +94,7 @@ export pure_coal2
 function pure_coal2(rng, sample_prop, models, path = nothing;
                     N = 1_000_000, maf = 5e-2, μ = 1e-1,
                     α = t -> -expm1(-t),
-                    M = 1000, n_is = 1000, nperms = 1000)
+                    M = 1000, n_is = 1000)
     ## MPI setup.
     MPI.Init()
     comm = MPI.COMM_WORLD
@@ -156,7 +139,7 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
             fφs = FrechetCoalDensity(sam_φs, pars = Dict(:p => p))
 
             liks_local[i, idx] =
-                last(compute_likelihood(rng_local, fφs, sam_ηs, n_is, nperms))
+                last(compute_likelihood(rng_local, fφs, sam_ηs, n_is))
         end
 
         istars_local[idx] = istar
@@ -254,7 +237,7 @@ export study1
 
 Execute the first simulation study.
 """
-function study1(path = "study1.data"; sample_prop = 1e-4, kwargs...)
+function study1(path = "study1.data"; sample_prop = 1e-3, kwargs...)
     rng = Xoshiro(42)
     scenarios = Dict(:full => (wild = 0.05, derived = 1.0),
                      :high => (wild = 0.05, derived = 0.75),
