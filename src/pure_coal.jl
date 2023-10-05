@@ -87,11 +87,26 @@ function compute_likelihood(rng, fφs, ηs, nb_is;
     res ./ sum(res)
 end
 
+function sample2(rng, n, φs, ::Nothing)
+    N = length(φs)
+    sample(rng, 1:N, n, replace = false)
+end
+
+function sample2(rng, n, φs, ncases)
+    N = length(φs)
+    ncontrols = n - ncases
+    cases = findall(skipmissing(φs))
+    controls = setdiff(1:N, cases)
+
+    [sample(rng, cases, ncases, replace = false);
+     sample(rng, controls, ncontrols, replace = false)]
+end
+
 export pure_coal2
 """
     pure_coal2
 """
-function pure_coal2(rng, sample_prop, models, path = nothing;
+function pure_coal2(rng, sample_prop, models, cases_prop = nothing, path = nothing;
                     N = 1_000_000, maf = 5e-2, μ = 1e-1,
                     α = t -> -expm1(-t),
                     M = 1000, n_is = 1000)
@@ -104,11 +119,14 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
     batchsize = ceil(Int, M ÷ MPI.Comm_size(comm))
     n = round(Int, sample_prop * N)
     pop_phenos = pop_pheno2(rng, pop_hap2(N, maf), models)
+    ncases = isnothing(cases_prop) ? nothing : round(Int, cases_prop * n)
+    nscenarios = length(pop_phenos[:scenarios])
     rank = MPI.Comm_rank(comm)
 
     istars_local = Vector{Int}(undef, batchsize)
-    idx_local = Matrix{Int}(undef, n, batchsize)
-    liks_local = Matrix{Float64}(undef, length(pop_phenos[:scenarios]), batchsize)
+    liks_local = similar(istars_local, Float64,
+                         nscenarios, size(istars_local)...)
+    idx_local = similar(liks_local, Int, n, size(liks_local)...)
     iterations = range(batchsize * rank + 1, length = batchsize)
     for (idx, k) in enumerate(iterations)
         @info "Simulation" k
@@ -116,22 +134,21 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
 
         rng_local = PCGStateSetseq((seed, k))
 
-        sam_idx = sample(rng_local, 1:N, n, replace = false)
-        sam_ηs = getindex(pop_phenos[:ηs], sam_idx)
-        derived_idx = findall(seq -> first(seq), sam_ηs)
-        while isempty(derived_idx)
-            sam_idx = sample(rng_local, 1:N, n, replace = false)
+        for (i, scenario) ∈ enumerate(pop_phenos[:scenarios])
+            ## Draw sample.
+            @label draw_sample
+
+            sam_idx = sample2(rng_local, n, pop_phenos[scenario][:φs], ncases)
             sam_ηs = getindex(pop_phenos[:ηs], sam_idx)
             derived_idx = findall(seq -> first(seq), sam_ηs)
-        end
 
-        ## Remove the phenotype of a random individual.
-        possible_stars = isodd(k) ?
-            derived_idx : setdiff(1:n, derived_idx)
+            isempty(derived_idx) && @goto draw_sample
 
-        istar = (first ∘ sample)(rng_local, possible_stars, 1)
+            ## Remove the phenotype of a random individual.
+            possible_stars = isodd(k) ? derived_idx : setdiff(1:n, derived_idx)
 
-        for (i, scenario) ∈ enumerate(pop_phenos[:scenarios])
+            istar = (first ∘ sample)(rng_local, possible_stars, 1)
+
             sam_φs = getindex(pop_phenos[scenario][:φs], sam_idx)
             sam_φs[istar] = missing
             p = pop_phenos[scenario][:prevalence]
@@ -140,10 +157,10 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
 
             liks_local[i, idx] =
                 last(compute_likelihood(rng_local, fφs, sam_ηs, n_is))
-        end
 
-        istars_local[idx] = istar
-        idx_local[:, idx] .= sam_idx
+            istars_local[idx] = istar
+            idx_local[:, i, idx] .= sam_idx
+        end
 
         @info "Simulation completed" k
     end
@@ -155,11 +172,11 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
         istars = similar(istars_local, worldsize * batchsize)
         istars_buff = MPI.UBuffer(istars, batchsize)
 
-        sampled_idx = similar(idx_local, n, worldsize * batchsize)
+        sampled_idx = similar(idx_local, n, nscenarios, worldsize * batchsize)
         sampled_idx_buff =
-            MPI.UBuffer(sampled_idx, (first ∘ size)(sampled_idx) * batchsize)
+            MPI.UBuffer(sampled_idx, n * nscenarios * batchsize)
 
-        liks = similar(liks_local, length(pop_phenos[:scenarios]), worldsize * batchsize)
+        liks = similar(liks_local, nscenarios, worldsize * batchsize)
         fill!(liks, 42)
         liks_buff = MPI.UBuffer(liks, (first ∘ size)(liks) * batchsize)
     else
@@ -181,15 +198,15 @@ function pure_coal2(rng, sample_prop, models, path = nothing;
             res[k][:n] = n
             res[k][:scenarios] = pop_phenos[:scenarios]
             res[k][:star] = istars[k]
-            res[k][:ηs] = getindex(pop_phenos[:ηs], sampled_idx[:,k])
 
-            for (i, scenario) ∈ enumerate(res[k][:scenarios])
+            for (i, scenario) ∈ enumerate(pop_phenos[:scenarios])
                 res[k][scenario] = Dict{Symbol, Any}()
                 res[k][scenario][:penetrance] =
                     pop_phenos[scenario][:penetrance]
                 res[k][scenario][:φs] =
-                    getindex(pop_phenos[scenario][:φs], sampled_idx[:,k])
+                    getindex(pop_phenos[scenario][:φs], sampled_idx[:, i, k])
                 res[k][scenario][:prob_φ] = liks[i, k]
+                res[k][scenario][:ηs] = getindex(pop_phenos[:ηs], sampled_idx[:, i, k])
             end
         end
 
@@ -207,12 +224,11 @@ function todf(results)
     ## From simulations.
     sims = DataFrame(Scenario = Symbol[],
                      Status = Symbol[],
-                     prob = BigFloat[])
+                     prob = Float64[])
 
     for sam ∈ results[:samples]
-        status = first(sam[:ηs][sam[:star]]) ? :derived : :wild
-
         for scenario ∈ sam[:scenarios]
+            status = first(sam[scenario][:ηs][sam[:star]]) ? :derived : :wild
             push!(sims, (scenario, status, sam[scenario][:prob_φ]))
         end
     end
@@ -237,11 +253,12 @@ export study1
 
 Execute the first simulation study.
 """
-function study1(path = "study1.data"; sample_prop = 1e-3, kwargs...)
+function study1(cases_prop = nothing, path = "study1.data";
+                sample_prop = 1e-3, kwargs...)
     rng = Xoshiro(42)
     scenarios = Dict(:full => (wild = 0.05, derived = 1.0),
                      :high => (wild = 0.05, derived = 0.75),
                      :low => (wild = 0.05, derived = 0.2))
 
-    pure_coal2(rng, sample_prop, scenarios, path; kwargs...)
+    pure_coal2(rng, sample_prop, scenarios, cases_prop, path; kwargs...)
 end
