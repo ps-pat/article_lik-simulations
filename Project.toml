@@ -1,7 +1,7 @@
 name = "Simulations"
 uuid = "778192d3-ef18-4ce5-814b-6356444560f1"
 authors = ["Patrick Fournier <p_fournier@hushmail.com>"]
-version = "0.1.32"
+version = "0.1.33"
 
 [deps]
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"

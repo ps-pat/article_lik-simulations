@@ -109,7 +109,8 @@ export pure_coal2
 function pure_coal2(rng, sample_prop, models, cases_prop = nothing, path = nothing;
                     N = 1_000_000, maf = 5e-2, μ = 1e-1,
                     α = t -> -expm1(-t),
-                    M = 1000, n_is = 1000)
+                    M = 1000, n_is = 1000,
+                    scale_α = false)
     ## MPI setup.
     MPI.Init()
     comm = MPI.COMM_WORLD
@@ -153,7 +154,9 @@ function pure_coal2(rng, sample_prop, models, cases_prop = nothing, path = nothi
             sam_φs[istar] = missing
             p = pop_phenos[scenario][:prevalence]
 
-            fφs = FrechetCoalDensity(sam_φs, pars = Dict(:p => p))
+            fφs = FrechetCoalDensity(sam_φs,
+                                     pars = Dict(:p => p),
+                                     scale_α = scale_α)
 
             liks_local[i, idx] =
                 last(compute_likelihood(rng_local, fφs, sam_ηs, n_is))
