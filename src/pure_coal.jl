@@ -14,10 +14,12 @@ using SpecialFunctions: gamma
 
 import MPI
 
+export pop_hap2
 pop_hap2(N, maf) =
     vcat([Sequence([one(UInt)], 1) for _ ∈ 1:(N * maf)],
          [Sequence([zero(UInt)], 1) for _ ∈ 1:(N * (1 - maf))])
 
+export pop_pheno2
 """
     pop_pheno2(rng, haplotypes, penetrance)
     pop_pheno2(rng, haplotypes, models)
@@ -102,6 +104,43 @@ function sample2(rng, n, φs, ncases)
      sample(rng, controls, ncontrols, replace = false)]
 end
 
+export pure_coal2_sim
+function pure_coal2_sim(pop_phenos, seed, k, n, ncases, n_is; scale_α = false)
+    rng_local = PCGStateSetseq((seed, k))
+    nscenarios = length(pop_phenos[:scenarios])
+
+    lik = Vector{Float64}(undef, nscenarios)
+    istars = similar(lik, Int)
+    idx = similar(istars, n, nscenarios)
+    for (i, scenario) ∈ enumerate(pop_phenos[:scenarios])
+        ## Draw sample.
+        @label draw_sample
+
+        idx[:,i] .= sample2(rng_local, n, pop_phenos[scenario][:φs], ncases)
+        sam_ηs = getindex(pop_phenos[:ηs], idx[:,i])
+        derived_idx = findall(seq -> first(seq), sam_ηs)
+
+        isodd(k) && isempty(derived_idx) && @goto draw_sample
+
+        ## Remove the phenotype of a random individual.
+        possible_stars = isodd(k) ? derived_idx : setdiff(1:n, derived_idx)
+
+        istars[i] = (first ∘ sample)(rng_local, possible_stars, 1)
+
+        sam_φs = getindex(pop_phenos[scenario][:φs], idx[:,i])
+        sam_φs[istars[i]] = missing
+        p = pop_phenos[scenario][:prevalence]
+
+        fφs = FrechetCoalDensity(sam_φs,
+                                 pars = Dict(:p => p),
+                                 scale_α = scale_α)
+
+        lik[i] = last(compute_likelihood(rng_local, fφs, sam_ηs, n_is))
+    end
+
+    lik, istars, idx
+end
+
 export pure_coal2
 """
     pure_coal2
@@ -124,46 +163,22 @@ function pure_coal2(rng, sample_prop, models, cases_prop = nothing, path = nothi
     nscenarios = length(pop_phenos[:scenarios])
     rank = MPI.Comm_rank(comm)
 
-    istars_local = Vector{Int}(undef, batchsize)
-    liks_local = similar(istars_local, Float64,
-                         nscenarios, size(istars_local)...)
-    idx_local = similar(liks_local, Int, n, size(liks_local)...)
+    liks_local = Matrix{Float64}(undef, nscenarios, batchsize)
+    istars_local = similar(liks_local, Int)
+    idx_local = similar(istars_local, n, nscenarios, batchsize)
+
     iterations = range(batchsize * rank + 1, length = batchsize)
     for (idx, k) in enumerate(iterations)
         @info "Simulation" k
         GC.gc()
 
-        rng_local = PCGStateSetseq((seed, k))
+        res = pure_coal2_sim(pop_phenos,
+                             seed, k,
+                             n, ncases, n_is, scale_α = scale_α)
 
-        for (i, scenario) ∈ enumerate(pop_phenos[:scenarios])
-            ## Draw sample.
-            @label draw_sample
-
-            sam_idx = sample2(rng_local, n, pop_phenos[scenario][:φs], ncases)
-            sam_ηs = getindex(pop_phenos[:ηs], sam_idx)
-            derived_idx = findall(seq -> first(seq), sam_ηs)
-
-            isempty(derived_idx) && @goto draw_sample
-
-            ## Remove the phenotype of a random individual.
-            possible_stars = isodd(k) ? derived_idx : setdiff(1:n, derived_idx)
-
-            istar = (first ∘ sample)(rng_local, possible_stars, 1)
-
-            sam_φs = getindex(pop_phenos[scenario][:φs], sam_idx)
-            sam_φs[istar] = missing
-            p = pop_phenos[scenario][:prevalence]
-
-            fφs = FrechetCoalDensity(sam_φs,
-                                     pars = Dict(:p => p),
-                                     scale_α = scale_α)
-
-            liks_local[i, idx] =
-                last(compute_likelihood(rng_local, fφs, sam_ηs, n_is))
-
-            istars_local[idx] = istar
-            idx_local[:, i, idx] .= sam_idx
-        end
+        liks_local[:,idx] .= res[1]
+        istars_local[:,idx] .= res[2]
+        idx_local[:,:,idx] .= res[3]
 
         @info "Simulation completed" k
     end
@@ -172,16 +187,20 @@ function pure_coal2(rng, sample_prop, models, cases_prop = nothing, path = nothi
 
     ## Put it all together & save results.
     if iszero(rank)
-        istars = similar(istars_local, worldsize * batchsize)
-        istars_buff = MPI.UBuffer(istars, batchsize)
+        liks = similar(liks_local,
+                       (first ∘ size)(liks_local),
+                       (last ∘ size)(liks_local) * worldsize)
+        liks_buff = MPI.UBuffer(liks, (prod ∘ size)(liks_local))
 
-        sampled_idx = similar(idx_local, n, nscenarios, worldsize * batchsize)
-        sampled_idx_buff =
-            MPI.UBuffer(sampled_idx, n * nscenarios * batchsize)
+        istars = similar(istars_local,
+                         (first ∘ size)(istars_local),
+                         (last ∘ size)(istars_local) * worldsize)
+        istars_buff = MPI.UBuffer(istars, (prod ∘ size)(istars_local))
 
-        liks = similar(liks_local, nscenarios, worldsize * batchsize)
-        fill!(liks, 42)
-        liks_buff = MPI.UBuffer(liks, (first ∘ size)(liks) * batchsize)
+        sampled_idx = similar(idx_local,
+                              size(idx_local)[1:2]...,
+                              (last ∘ size)(idx_local) * worldsize)
+        sampled_idx_buff = MPI.UBuffer(sampled_idx, (prod ∘ size)(idx_local))
     else
         istars_buff = MPI.UBuffer(nothing)
         sampled_idx_buff = MPI.UBuffer(nothing)
@@ -200,7 +219,6 @@ function pure_coal2(rng, sample_prop, models, cases_prop = nothing, path = nothi
             res[k][:N] = N
             res[k][:n] = n
             res[k][:scenarios] = pop_phenos[:scenarios]
-            res[k][:star] = istars[k]
 
             for (i, scenario) ∈ enumerate(pop_phenos[:scenarios])
                 res[k][scenario] = Dict{Symbol, Any}()
@@ -210,6 +228,7 @@ function pure_coal2(rng, sample_prop, models, cases_prop = nothing, path = nothi
                     getindex(pop_phenos[scenario][:φs], sampled_idx[:, i, k])
                 res[k][scenario][:prob_φ] = liks[i, k]
                 res[k][scenario][:ηs] = getindex(pop_phenos[:ηs], sampled_idx[:, i, k])
+                res[k][scenario][:star] = istars[i, k]
             end
         end
 
@@ -231,7 +250,8 @@ function todf(results)
 
     for sam ∈ results[:samples]
         for scenario ∈ sam[:scenarios]
-            status = first(sam[scenario][:ηs][sam[:star]]) ? :derived : :wild
+            status = first(sam[scenario][:ηs][sam[scenario][:star]]) ?
+                :derived : :wild
             push!(sims, (scenario, status, sam[scenario][:prob_φ]))
         end
     end
