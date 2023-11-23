@@ -63,30 +63,29 @@ function pop_pheno2(rng, haplotypes, models::Dict)
     ret
 end
 
-function compute_likelihood(rng, fφs, ηs, nb_is;
+function compute_likelihood(rng, fφs, ηs, n_is;
                             seq_length = 1,
                             Ne = 1000,
                             μ_loc = 5e-5)
     n = length(ηs)
+    ftree = CoalDensity(n)
+
     res = zeros(BigFloat, 2)
 
-    for _ ∈ 1:nb_is
-        arg = Arg(
-            ηs,
-            seq_length = seq_length,
-            effective_popsize = Ne,
-            μ_loc = μ_loc,
-            positions = [0])
-        buildtree!(rng, arg)
+    for _ ∈ 1:n_is
+        tree = Tree(ηs,
+                    seq_length = seq_length,
+                    effective_popsize = Ne,
+                    μ_loc = μ_loc,
+                    positions = [0])
+        build!(rng, tree)
 
         ## Probability of the tree.
-        ftree = CoalMutDensity(n, mut_rate(arg), seq_length)
-        log_weight = ftree(arg, logscale = true) .- arg.logprob
-
-        res .+= exp.(log.(fφs(arg)) .+ log_weight)
+        log_weight = ftree(tree, logscale = true) .- tree.logprob
+        res .+= exp.(log.(fφs(tree)) .+ log_weight)
     end
 
-    res ./ sum(res)
+    res ./ sum(res, dims = 1)
 end
 
 function sample2(rng, n, φs, ::Nothing)
@@ -131,9 +130,15 @@ function pure_coal2_sim(pop_phenos, seed, k, n, ncases, n_is; scale_α = false)
         sam_φs[istars[i]] = missing
         p = pop_phenos[scenario][:prevalence]
 
-        fφs = FrechetCoalDensity(sam_φs,
-                                 pars = Dict(:p => p),
-                                 scale_α = scale_α)
+        ## Fit Copula
+        frechet = FrechetCopula(PhenotypeBinary, AlphaExponential(), p)
+        fit!(rng_local, frechet,
+             sam_φs[begin:end .!= istars[i]],
+             sam_ηs[begin:end .!= istars[i]],
+             Tree, n = 10,
+             seq_length = 1, μ_loc = 5e-5, effective_popsize = 1000)
+
+        fφs = PhenotypeDensity(sam_φs, frechet)
 
         lik[i] = last(compute_likelihood(rng_local, fφs, sam_ηs, n_is))
     end
@@ -284,4 +289,33 @@ function study1(cases_prop = nothing, path = "study1.data";
                      :low => (wild = f0, derived = 0.2))
 
     pure_coal2(rng, sample_prop, scenarios, cases_prop, path; kwargs...)
+end
+
+####################
+# Basic properties #
+####################
+
+export simple
+"""
+    simple(rng, sample_mat)
+
+Simulation study.
+
+`sample_mat` must be a Matrix{Int}. The entry (i, j) is the number of individuals with
+genotype `i` and phenotype `j`.
+"""
+function simple(rng, sample_mat, starη, starφ;
+                n_is = 1000, α = t -> -expm1(-t))
+    ηs = mapreduce(vcat, enumerate(sample_mat)) do (k, n)
+        [fillseq(iseven(k), 1) for _ ∈ 1:n]
+    end
+
+    ncontrols, ncases = sum(sample_mat, dims = 1)
+    φs = Union{Bool, Missing}[falses(ncontrols); trues(ncases)]
+
+    star = sum(sample_mat[range(1, starη + starφ * 2)]) + 1
+    φs[star] = missing
+    fφs = FrechetCoalDensity(φs, pars = Dict(:p => 0.15), α = α)
+
+    compute_likelihood(rng, fφs, ηs, n_is)
 end
