@@ -104,7 +104,7 @@ function sample2(rng, n, φs, ncases)
 end
 
 export pure_coal2_sim
-function pure_coal2_sim(pop_phenos, seed, k, n, ncases, n_is; scale_α = false)
+function pure_coal2_sim(pop_phenos, seed, k, n, ncases, n_is; nα = 10)
     rng_local = PCGStateSetseq((seed, k))
     nscenarios = length(pop_phenos[:scenarios])
 
@@ -131,12 +131,13 @@ function pure_coal2_sim(pop_phenos, seed, k, n, ncases, n_is; scale_α = false)
         p = pop_phenos[scenario][:prevalence]
 
         ## Fit Copula
-        frechet = FrechetCopula(PhenotypeBinary, AlphaExponential(), p)
+        frechet = FrechetCopula(PhenotypeBinary, AlphaDagum(), p)
         fit!(rng_local, frechet,
-             sam_φs[begin:end .!= istars[i]],
+             convert(Vector{Bool}, sam_φs[begin:end .!= istars[i]]),
              sam_ηs[begin:end .!= istars[i]],
-             Tree, n = 10,
-             seq_length = 1, μ_loc = 5e-5, effective_popsize = 1000)
+             Tree, n = nα,
+             seq_length = 1, μ_loc = 5e-5, effective_popsize = 1000,
+             positions = [0])
 
         fφs = PhenotypeDensity(sam_φs, frechet)
 
@@ -152,9 +153,7 @@ export pure_coal2
 """
 function pure_coal2(rng, sample_prop, models, cases_prop = nothing, path = nothing;
                     N = 1_000_000, maf = 5e-2, μ = 1e-1,
-                    α = t -> -expm1(-t),
-                    M = 1000, n_is = 1000,
-                    scale_α = false)
+                    M = 1000, n_is = 1000)
     ## MPI setup.
     MPI.Init()
     comm = MPI.COMM_WORLD
@@ -177,9 +176,7 @@ function pure_coal2(rng, sample_prop, models, cases_prop = nothing, path = nothi
         @info "Simulation" k
         GC.gc()
 
-        res = pure_coal2_sim(pop_phenos,
-                             seed, k,
-                             n, ncases, n_is, scale_α = scale_α)
+        res = pure_coal2_sim(pop_phenos, seed, k, n, ncases, n_is)
 
         liks_local[:,idx] .= res[1]
         istars_local[:,idx] .= res[2]
