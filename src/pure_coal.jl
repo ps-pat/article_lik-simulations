@@ -239,8 +239,6 @@ function pure_coal2(rng, sample_prop, models, cases_prop = nothing, path = nothi
             :samples => vcat(res...),
             :pop => pop_phenos))
     end
-
-    MPI.Finalize()
 end
 
 export todf
