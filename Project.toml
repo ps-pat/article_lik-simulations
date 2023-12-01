@@ -1,21 +1,19 @@
 name = "Simulations"
 uuid = "778192d3-ef18-4ce5-814b-6356444560f1"
 authors = ["Patrick Fournier <p_fournier@hushmail.com>"]
-version = "0.1.40"
+version = "0.1.41"
 
 [deps]
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
+MPIPreferences = "3da0fdf6-3ccc-4f1b-acd9-58baa6c99267"
 Moosh = "99b31415-443e-43a2-8bf4-ca532bb4a161"
 PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 RandomNumbers = "e6cf234a-135c-5ec9-84dd-332b85af5143"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
-
-[compat]
-Moosh = "0.1.7"
 
 [extras]
 MPIPreferences = "3da0fdf6-3ccc-4f1b-acd9-58baa6c99267"
