@@ -151,12 +151,15 @@ export pure_coal2
 """
     pure_coal2
 """
-function pure_coal2(rng, sample_prop, models, cases_prop = nothing, path = nothing;
+function pure_coal2(rng, comm, sample_prop, models,
+                    cases_prop = nothing, path = nothing;
                     N = 1_000_000, maf = 5e-2, μ = 1e-1,
                     M = 1000, n_is = 1000)
     ## MPI setup.
-    MPI.Init()
-    comm = MPI.COMM_WORLD
+    if isnothing(comm)
+        MPI.Init()
+        comm = MPI.COMM_WORLD
+    end
     worldsize = MPI.Comm_size(comm)
 
     seed = rand(rng, Int)
@@ -239,8 +242,6 @@ function pure_coal2(rng, sample_prop, models, cases_prop = nothing, path = nothi
             :samples => vcat(res...),
             :pop => pop_phenos))
     end
-
-    MPI.Finalize()
 end
 
 export todf
@@ -278,14 +279,14 @@ export study1
 
 Execute the first simulation study.
 """
-function study1(cases_prop = nothing, path = "study1.data";
+function study1(comm = nothing, cases_prop = nothing, path = "study1.data";
                 sample_prop = 1e-3, f0 = 0.05, kwargs...)
     rng = Xoshiro(42)
     scenarios = Dict(:full => (wild = f0, derived = 1.0),
                      :high => (wild = f0, derived = 0.75),
                      :low => (wild = f0, derived = 0.2))
 
-    pure_coal2(rng, sample_prop, scenarios, cases_prop, path; kwargs...)
+    pure_coal2(rng, comm, sample_prop, scenarios, cases_prop, path; kwargs...)
 end
 
 ####################
