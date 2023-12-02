@@ -156,10 +156,6 @@ function pure_coal2(rng, comm, sample_prop, models,
                     N = 1_000_000, maf = 5e-2, μ = 1e-1,
                     M = 1000, n_is = 1000)
     ## MPI setup.
-    if isnothing(comm)
-        MPI.Init()
-        comm = MPI.COMM_WORLD
-    end
     worldsize = MPI.Comm_size(comm)
 
     seed = rand(rng, Int)
@@ -279,7 +275,7 @@ export study1
 
 Execute the first simulation study.
 """
-function study1(comm = nothing, cases_prop = nothing, path = "study1.data";
+function study1(comm, cases_prop = nothing, path = "study1.data";
                 sample_prop = 1e-3, f0 = 0.05, kwargs...)
     rng = Xoshiro(42)
     scenarios = Dict(:full => (wild = f0, derived = 1.0),
