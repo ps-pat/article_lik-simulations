@@ -988,9 +988,9 @@ version = "1.3.4"
 
 [[deps.Moosh]]
 deps = ["Combinatorics", "Distributions", "GeometryBasics", "GraphMakie", "Graphs", "IntervalSets", "JuMP", "LayeredLayouts", "NLopt", "PrecompileTools", "Random", "RandomNumbers", "SpecialFunctions", "StaticArrays", "Statistics", "StatsAPI", "StatsFuns"]
-git-tree-sha1 = "f4e3b9fcb60905751286e10bd58f656464406f5c"
+git-tree-sha1 = "c7a03eadce63b1646b620a617ae669312296e599"
 uuid = "99b31415-443e-43a2-8bf4-ca532bb4a161"
-version = "0.1.37"
+version = "0.1.38"
 
 [[deps.MosaicViews]]
 deps = ["MappedArrays", "OffsetArrays", "PaddedViews", "StackViews"]
