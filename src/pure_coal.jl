@@ -104,7 +104,7 @@ function sample2(rng, n, φs, ncases)
 end
 
 export pure_coal2_sim
-function pure_coal2_sim(pop_phenos, seed, k, n, ncases, n_is; nα = 10)
+function pure_coal2_sim(pop_phenos, seed, k, n, ncases, n_is; nα = 100)
     rng_local = PCGStateSetseq((seed, k))
     nscenarios = length(pop_phenos[:scenarios])
 
@@ -154,7 +154,7 @@ export pure_coal2
 function pure_coal2(rng, comm, sample_prop, models,
                     cases_prop = nothing, path = nothing;
                     N = 1_000_000, maf = 5e-2, μ = 1e-1,
-                    M = 1000, n_is = 1000)
+                    M = 1000, n_is = 1000, nα = 100)
     ## MPI setup.
     worldsize = MPI.Comm_size(comm)
 
@@ -175,7 +175,7 @@ function pure_coal2(rng, comm, sample_prop, models,
         @info "Simulation" k
         GC.gc()
 
-        res = pure_coal2_sim(pop_phenos, seed, k, n, ncases, n_is)
+        res = pure_coal2_sim(pop_phenos, seed, k, n, ncases, n_is, nα = nα)
 
         liks_local[:,idx] .= res[1]
         istars_local[:,idx] .= res[2]
