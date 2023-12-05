@@ -104,7 +104,7 @@ function sample2(rng, n, φs, ncases)
 end
 
 export pure_coal2_sim
-function pure_coal2_sim(pop_phenos, seed, k, n, ncases, n_is; nα = 100)
+function pure_coal2_sim(pop_phenos, seed, k, n, ncases, n_is, copula_factory; nα = 100)
     rng_local = PCGStateSetseq((seed, k))
     nscenarios = length(pop_phenos[:scenarios])
 
@@ -131,15 +131,15 @@ function pure_coal2_sim(pop_phenos, seed, k, n, ncases, n_is; nα = 100)
         p = pop_phenos[scenario][:prevalence]
 
         ## Fit Copula
-        frechet = FrechetCopula(PhenotypeBinary, AlphaDagum(), p)
-        fit!(rng_local, frechet,
+        copula = copula_factory(p)
+        fit!(rng_local, copula,
              convert(Vector{Bool}, sam_φs[begin:end .!= istars[i]]),
              sam_ηs[begin:end .!= istars[i]],
              Tree, n = nα,
              seq_length = 1, μ_loc = 5e-5, effective_popsize = 1000,
              positions = [0])
 
-        fφs = PhenotypeDensity(sam_φs, frechet)
+        fφs = PhenotypeDensity(sam_φs, copula)
 
         lik[i] = last(compute_likelihood(rng_local, fφs, sam_ηs, n_is))
     end
@@ -151,7 +151,7 @@ export pure_coal2
 """
     pure_coal2
 """
-function pure_coal2(rng, comm, sample_prop, models,
+function pure_coal2(rng, comm, copula_factory, sample_prop, models,
                     cases_prop = nothing, path = nothing;
                     N = 1_000_000, maf = 5e-2, μ = 1e-1,
                     M = 1000, n_is = 1000, nα = 100)
@@ -175,7 +175,7 @@ function pure_coal2(rng, comm, sample_prop, models,
         @info "Simulation" k
         GC.gc()
 
-        res = pure_coal2_sim(pop_phenos, seed, k, n, ncases, n_is, nα = nα)
+        res = pure_coal2_sim(pop_phenos, seed, k, n, ncases, n_is, copula_factory,  nα = nα)
 
         liks_local[:,idx] .= res[1]
         istars_local[:,idx] .= res[2]
@@ -275,14 +275,14 @@ export study1
 
 Execute the first simulation study.
 """
-function study1(comm, cases_prop = nothing, path = "study1.data";
+function study1(comm, copula_factory, path = "study1.data", cases_prop = nothing;
                 sample_prop = 1e-3, f0 = 0.05, kwargs...)
     rng = Xoshiro(42)
     scenarios = Dict(:full => (wild = f0, derived = 1.0),
                      :high => (wild = f0, derived = 0.75),
                      :low => (wild = f0, derived = 0.2))
 
-    pure_coal2(rng, comm, sample_prop, scenarios, cases_prop, path; kwargs...)
+    pure_coal2(rng, comm, copula_factory, sample_prop, scenarios, cases_prop, path; kwargs...)
 end
 
 ####################
