@@ -413,9 +413,9 @@ uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
 
 [[deps.FillArrays]]
 deps = ["LinearAlgebra", "Random"]
-git-tree-sha1 = "01dba5dbad6b2766e2ddd7b9d64af0e6d68d95cd"
+git-tree-sha1 = "25a10f2b86118664293062705fd9c7e2eda881a2"
 uuid = "1a297f60-69ca-5386-bcde-b61e274b549b"
-version = "1.9.1"
+version = "1.9.2"
 weakdeps = ["PDMats", "SparseArrays", "Statistics"]
 
     [deps.FillArrays.extensions]
@@ -988,9 +988,9 @@ version = "2.1.1"
 
 [[deps.Moosh]]
 deps = ["Combinatorics", "Distributions", "GeometryBasics", "GraphMakie", "Graphs", "IntervalSets", "JuMP", "LayeredLayouts", "NLopt", "PrecompileTools", "Random", "RandomNumbers", "SpecialFunctions", "StaticArrays", "Statistics", "StatsAPI", "StatsFuns"]
-git-tree-sha1 = "cc567a5e7b9fbbc0b3524b77e5582ceb74515d17"
+git-tree-sha1 = "7c70ffeef0d34aa675aee9297c4e1d82609e02cb"
 uuid = "99b31415-443e-43a2-8bf4-ca532bb4a161"
-version = "0.1.39"
+version = "0.1.40"
 
 [[deps.MosaicViews]]
 deps = ["MappedArrays", "OffsetArrays", "PaddedViews", "StackViews"]
@@ -1148,9 +1148,9 @@ version = "0.11.30"
 
 [[deps.PNGFiles]]
 deps = ["Base64", "CEnum", "ImageCore", "IndirectArrays", "OffsetArrays", "libpng_jll"]
-git-tree-sha1 = "eed372b0fa15624273a9cdb188b1b88476e6a233"
+git-tree-sha1 = "67186a2bc9a90f9f85ff3cc8277868961fb57cbd"
 uuid = "f57f5aa1-a3ce-4bc8-8ab9-96f992907883"
-version = "0.4.2"
+version = "0.4.3"
 
 [[deps.Packing]]
 deps = ["GeometryBasics"]
@@ -1738,9 +1738,9 @@ version = "2.0.2+0"
 
 [[deps.libpng_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Zlib_jll"]
-git-tree-sha1 = "94d180a6d2b5e55e447e2d27a29ed04fe79eb30c"
+git-tree-sha1 = "f7c281e9c61905521993a987d38b5ab1d4b53bef"
 uuid = "b53b4c65-9356-5827-b1ea-8c7a1a84506f"
-version = "1.6.38+0"
+version = "1.6.38+1"
 
 [[deps.libsixel_jll]]
 deps = ["Artifacts", "JLLWrappers", "JpegTurbo_jll", "Libdl", "Pkg", "libpng_jll"]
