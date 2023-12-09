@@ -491,6 +491,11 @@ git-tree-sha1 = "aa31987c2ba8704e23c6c8ba8a4f769d5d7e4f91"
 uuid = "559328eb-81f9-559d-9380-de523a88c83c"
 version = "1.0.10+0"
 
+[[deps.FunctionWrappers]]
+git-tree-sha1 = "d62485945ce5ae9c0c48f124a84998d755bae00e"
+uuid = "069b7b12-0de2-55c6-9aab-29f3d0a68a2e"
+version = "1.1.3"
+
 [[deps.Future]]
 deps = ["Random"]
 uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
@@ -987,10 +992,10 @@ uuid = "7475f97c-0381-53b1-977b-4c60186c8d62"
 version = "2.2.0"
 
 [[deps.Moosh]]
-deps = ["Combinatorics", "Distributions", "GeometryBasics", "GraphMakie", "Graphs", "IntervalSets", "JuMP", "LayeredLayouts", "NLopt", "PrecompileTools", "Random", "RandomNumbers", "SpecialFunctions", "StaticArrays", "Statistics", "StatsAPI", "StatsFuns"]
-git-tree-sha1 = "a5f743b983c80128d32016115cd6cc3d46d54ada"
+deps = ["Combinatorics", "Distributions", "FunctionWrappers", "GeometryBasics", "GraphMakie", "Graphs", "IntervalSets", "JuMP", "LayeredLayouts", "NLopt", "PrecompileTools", "Random", "RandomNumbers", "SpecialFunctions", "StaticArrays", "Statistics", "StatsAPI", "StatsFuns"]
+git-tree-sha1 = "e12f73dea2b7cb9b58e7ac40da5dda7ca22ca7c9"
 uuid = "99b31415-443e-43a2-8bf4-ca532bb4a161"
-version = "0.1.42"
+version = "0.1.43"
 
 [[deps.MosaicViews]]
 deps = ["MappedArrays", "OffsetArrays", "PaddedViews", "StackViews"]
